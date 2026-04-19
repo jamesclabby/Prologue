@@ -1,0 +1,21 @@
+# Secrets — never commit these
+*.xcconfig
+Secrets.swift
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SPM
+.build/
+Prologue/.build/
+Prologue/Prologue.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# macOS
+.DS_Store
