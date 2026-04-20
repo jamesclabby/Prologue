@@ -68,7 +68,7 @@ final class SocialViewModel {
 
     @MainActor
     func searchUsers(query: String) async {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             searchResults = []
             return
         }

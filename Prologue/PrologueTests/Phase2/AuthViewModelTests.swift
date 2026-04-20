@@ -4,6 +4,7 @@ import Foundation
 
 // MARK: - AuthViewModel tests using MockAuthService
 
+@MainActor
 @Suite("AuthViewModel")
 struct AuthViewModelTests {
 

@@ -160,6 +160,7 @@ struct BookSearchServiceTests {
 
 // MARK: - SearchViewModel
 
+@MainActor
 @Suite("SearchViewModel")
 struct SearchViewModelTests {
 
