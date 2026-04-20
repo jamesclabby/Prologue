@@ -51,6 +51,7 @@ struct LibraryView: View {
                     Button { showProfile = true } label: {
                         Image(systemName: "person.circle")
                     }
+                    .accessibilityLabel("Profile")
                 }
             }
             .sheet(isPresented: $showProfile) {

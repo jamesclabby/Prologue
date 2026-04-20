@@ -35,6 +35,7 @@ struct SearchView: View {
                     } label: {
                         Image(systemName: "barcode.viewfinder")
                     }
+                    .accessibilityLabel("Scan Barcode")
                 }
             }
             .sheet(isPresented: $showScanner) {
