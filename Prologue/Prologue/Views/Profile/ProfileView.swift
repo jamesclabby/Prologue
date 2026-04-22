@@ -1,5 +1,6 @@
 import SwiftUI
 import Auth
+import LocalAuthentication
 
 struct ProfileView: View {
     @Environment(AuthViewModel.self) private var authVM
@@ -13,6 +14,7 @@ struct ProfileView: View {
     @State private var showDeleteStep2 = false
     @State private var deleteError: String?
     @State private var showEditProfile = false
+    @AppStorage("biometricLoginEnabled") private var biometricLoginEnabled: Bool = false
 
     private var displayedName: String {
         authVM.profile?.displayName ?? authVM.profile?.username ?? "—"
@@ -64,13 +66,44 @@ struct ProfileView: View {
                 // MARK: Account
                 Section("Account") {
                     LabeledContent("Email", value: authVM.currentUser?.email ?? "—")
-                    // Biometric toggle: Stage 2
+                    Toggle("Face ID / Touch ID", isOn: $biometricLoginEnabled)
+                        .onChange(of: biometricLoginEnabled) { _, enabled in
+                            guard enabled else { return }
+                            var error: NSError?
+                            if !LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+                                biometricLoginEnabled = false
+                            }
+                        }
                 }
 
-                // MARK: Notifications — Stage 2
-                // MARK: Appearance — Stage 2
-                // MARK: Privacy — Stage 3
-                // MARK: Support & Legal — Stage 3
+                // MARK: Notifications
+                Section("Notifications") {
+                    NavigationLink("Notifications") {
+                        NotificationsSettingsView()
+                    }
+                }
+
+                // MARK: Appearance
+                Section("Appearance") {
+                    NavigationLink("Appearance") {
+                        AppearanceSettingsView()
+                    }
+                }
+
+                // MARK: Privacy
+                Section("Privacy") {
+                    NavigationLink("Privacy") {
+                        PrivacySettingsView()
+                            .environment(authVM)
+                    }
+                }
+
+                // MARK: Support & Legal
+                Section("Support & Legal") {
+                    NavigationLink("Support & Legal") {
+                        SupportLegalView()
+                    }
+                }
 
                 // MARK: Danger Zone
                 Section {

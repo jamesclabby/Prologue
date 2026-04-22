@@ -104,6 +104,59 @@ final class AuthService: AuthServiceProtocol {
         try await signOut()
     }
 
+    // MARK: - Privacy
+
+    func updatePrivacySettings(userID: UUID, visibility: ProfileVisibility,
+                               activitySharing: Bool) async throws -> Profile {
+        let update = PrivacyUpdate(visibility: visibility, activitySharing: activitySharing)
+        return try await supabase
+            .from("profiles")
+            .update(update)
+            .eq("id", value: userID)
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
+    // MARK: - Blocked users
+
+    func fetchBlockedUsers(userID: UUID) async throws -> [Profile] {
+        let rows: [BlockedUser] = try await supabase
+            .from("blocked_users")
+            .select()
+            .eq("blocker_id", value: userID)
+            .execute()
+            .value
+
+        let blockedIDs = rows.map(\.blockedID)
+        guard !blockedIDs.isEmpty else { return [] }
+
+        return try await supabase
+            .from("profiles")
+            .select()
+            .in("id", values: blockedIDs.map(\.uuidString))
+            .execute()
+            .value
+    }
+
+    func blockUser(blockerID: UUID, blockedID: UUID) async throws {
+        let insert: [String: String] = [
+            "blocker_id": blockerID.uuidString,
+            "blocked_id": blockedID.uuidString
+        ]
+        try await supabase.from("blocked_users").insert(insert).execute()
+    }
+
+    func unblockUser(blockerID: UUID, blockedID: UUID) async throws {
+        try await supabase
+            .from("blocked_users")
+            .delete()
+            .eq("blocker_id", value: blockerID)
+            .eq("blocked_id", value: blockedID)
+            .execute()
+    }
+
     // MARK: - Nonce helpers
 
     private func randomNonce(length: Int = 32) -> String {
@@ -149,5 +202,15 @@ private struct ProfileUpdate: Encodable {
         case username
         case favoriteGenre = "favorite_genre"
         case avatarURL    = "avatar_url"
+    }
+}
+
+private struct PrivacyUpdate: Encodable {
+    let visibility: ProfileVisibility
+    let activitySharing: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case visibility
+        case activitySharing = "activity_sharing"
     }
 }

@@ -73,19 +73,20 @@ final class SocialViewModel {
     }
 
     @MainActor
-    func searchUsers(query: String) async {
+    func searchUsers(query: String, blockedIDs: Set<UUID> = []) async {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             searchResults = []
             return
         }
         do {
-            searchResults = try await supabase
+            let results: [Profile] = try await supabase
                 .from("profiles")
                 .select()
                 .ilike("username", pattern: "%\(query)%")
                 .limit(20)
                 .execute()
                 .value
+            searchResults = results.filter { !blockedIDs.contains($0.id) }
         } catch {
             self.error = error
         }

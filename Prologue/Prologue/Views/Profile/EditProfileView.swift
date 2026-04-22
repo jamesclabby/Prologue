@@ -5,7 +5,6 @@ struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var displayName: String = ""
-    @State private var username: String = ""
     @State private var favoriteGenre: String = ""
 
     var body: some View {
@@ -15,12 +14,7 @@ struct EditProfileView: View {
                     TextField("Your name", text: $displayName)
                         .multilineTextAlignment(.trailing)
                 }
-                LabeledContent("Username") {
-                    TextField("handle", text: $username)
-                        .multilineTextAlignment(.trailing)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                }
+                LabeledContent("Username", value: authVM.profile?.username ?? "")
             }
             Section("Preferences") {
                 LabeledContent("Favorite Genre") {
@@ -40,18 +34,17 @@ struct EditProfileView: View {
                     Task {
                         await authVM.updateProfile(
                             displayName: displayName.isEmpty ? nil : displayName,
-                            username: username,
+                            username: authVM.profile?.username ?? "",
                             favoriteGenre: favoriteGenre.isEmpty ? nil : favoriteGenre
                         )
                         if authVM.error == nil { dismiss() }
                     }
                 }
-                .disabled(authVM.isSaving || username.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(authVM.isSaving)
             }
         }
         .onAppear {
             displayName   = authVM.profile?.displayName ?? ""
-            username      = authVM.profile?.username ?? ""
             favoriteGenre = authVM.profile?.favoriteGenre ?? ""
         }
     }

@@ -2,9 +2,13 @@ import SwiftUI
 
 struct FriendProfileView: View {
     @Environment(SocialViewModel.self) private var socialVM
+    @Environment(AuthViewModel.self) private var authVM
+    @Environment(\.dismiss) private var dismiss
     let profile: Profile
     @State private var friendBooks: [UserBook] = []
     @State private var isLoading = true
+    @State private var showBlockConfirm = false
+    @State private var blockError: String?
 
     var inProgressBooks: [UserBook] { friendBooks.filter { $0.status == .inProgress } }
     var readBooks: [UserBook] { friendBooks.filter { $0.status == .read } }
@@ -44,6 +48,37 @@ struct FriendProfileView: View {
         }
         .navigationTitle(profile.username)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button("Block User", role: .destructive) {
+                        showBlockConfirm = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+        .alert("Block @\(profile.username)?", isPresented: $showBlockConfirm) {
+            Button("Block", role: .destructive) {
+                Task {
+                    do {
+                        try await authVM.blockUser(profile)
+                        dismiss()
+                    } catch {
+                        blockError = error.localizedDescription
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("They won't appear in your searches, and you can unblock them later in Settings → Privacy.")
+        }
+        .alert("Couldn't block user", isPresented: .constant(blockError != nil)) {
+            Button("OK") { blockError = nil }
+        } message: {
+            Text(blockError ?? "")
+        }
         .task {
             friendBooks = (try? await socialVM.loadFriendBooks(friendID: profile.id)) ?? []
             isLoading = false

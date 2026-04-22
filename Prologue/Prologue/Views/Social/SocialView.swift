@@ -63,6 +63,14 @@ struct SocialView: View {
                                     Text("Friends").foregroundStyle(.secondary).font(.caption)
                                 }
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button("Block", role: .destructive) {
+                                    Task {
+                                        try? await authVM.blockUser(profile)
+                                        socialVM.searchResults.removeAll { $0.id == profile.id }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -70,11 +78,13 @@ struct SocialView: View {
             .navigationTitle("Friends")
             .searchable(text: $searchQuery, prompt: "Search readers…")
             .onChange(of: searchQuery) { _, new in
-                Task { await socialVM.searchUsers(query: new) }
+                let blocked = Set(authVM.blockedUsers.map(\.id))
+                Task { await socialVM.searchUsers(query: new, blockedIDs: blocked) }
             }
             .task {
                 guard let userID = authVM.userID else { return }
                 await socialVM.loadFriends(userID: userID)
+                await authVM.loadBlockedUsers()
             }
         }
     }

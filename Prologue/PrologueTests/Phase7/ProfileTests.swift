@@ -222,3 +222,182 @@ struct NotificationSettingsTests {
         }
     }
 }
+
+// MARK: - Settings — biometric
+
+@Suite("Settings — biometric", .serialized)
+struct BiometricSettingsTests {
+
+    private let key = "biometricLoginEnabled"
+
+    @Test func biometricDefaultsFalse() {
+        UserDefaults.standard.removeObject(forKey: key)
+        #expect(UserDefaults.standard.bool(forKey: key) == false)
+    }
+
+    @Test func biometricPersistsTrue() {
+        UserDefaults.standard.set(true, forKey: key)
+        #expect(UserDefaults.standard.bool(forKey: key) == true)
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+}
+
+// MARK: - Profile visibility decoding
+
+@Suite("Profile — visibility decoding")
+struct ProfileVisibilityTests {
+
+    @Test func visibilityDefaultsToPublicWhenAbsent() throws {
+        let json = """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "username": "alice",
+          "created_at": "2024-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let profile = try decoder.decode(Profile.self, from: json)
+        #expect(profile.visibility == .public)
+        #expect(profile.activitySharing == true)
+    }
+
+    @Test func visibilityDecodesFriendsOnly() throws {
+        let json = """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "username": "alice",
+          "visibility": "friends_only",
+          "activity_sharing": false,
+          "created_at": "2024-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let profile = try decoder.decode(Profile.self, from: json)
+        #expect(profile.visibility == .friendsOnly)
+        #expect(profile.activitySharing == false)
+    }
+
+    @Test func visibilityDecodesPrivate() throws {
+        let json = """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "username": "alice",
+          "visibility": "private",
+          "created_at": "2024-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let profile = try decoder.decode(Profile.self, from: json)
+        #expect(profile.visibility == .private)
+    }
+}
+
+// MARK: - AuthViewModel — privacy settings
+
+@MainActor
+@Suite("AuthViewModel — privacy settings")
+struct PrivacySettingsTests {
+
+    @Test func updatePrivacyCallsService() async {
+        let mock = MockAuthService()
+        let profile = makeProfile()
+        mock.stubbedProfile = profile
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = profile
+        await vm.updatePrivacySettings(visibility: .friendsOnly, activitySharing: false)
+        #expect(mock.updatePrivacyCallCount == 1)
+    }
+
+    @Test func updatePrivacyUpdatesLocalProfile() async {
+        let mock = MockAuthService()
+        let profile = makeProfile()
+        mock.stubbedProfile = profile
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = profile
+        await vm.updatePrivacySettings(visibility: .private, activitySharing: false)
+        #expect(vm.profile?.visibility == .private)
+        #expect(vm.profile?.activitySharing == false)
+    }
+
+    @Test func updatePrivacyPreservesOtherFields() async {
+        let mock = MockAuthService()
+        let profile = makeProfile(username: "alice", displayName: "Alice", favoriteGenre: "Fantasy")
+        mock.stubbedProfile = profile
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = profile
+        await vm.updatePrivacySettings(visibility: .friendsOnly, activitySharing: true)
+        #expect(vm.profile?.username == "alice")
+        #expect(vm.profile?.displayName == "Alice")
+        #expect(vm.profile?.favoriteGenre == "Fantasy")
+    }
+
+    @Test func updatePrivacySetsErrorOnFailure() async {
+        let mock = MockAuthService()
+        mock.stubbedProfile = makeProfile()
+        mock.shouldThrowOnUpdatePrivacy = true
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = mock.stubbedProfile
+        vm.currentUser = nil
+        await vm.updatePrivacySettings(visibility: .private, activitySharing: false)
+        #expect(vm.error != nil)
+    }
+}
+
+// MARK: - AuthViewModel — blocked users
+
+@MainActor
+@Suite("AuthViewModel — blocked users")
+struct BlockedUsersTests {
+
+    @Test func loadBlockedUsersPopulatesArray() async {
+        let mock = MockAuthService()
+        let me = makeProfile()
+        let blocked = makeProfile(username: "badactor")
+        mock.stubbedProfile = me
+        mock.stubbedBlockedUsers = [blocked]
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = me
+        await vm.loadBlockedUsers()
+        #expect(vm.blockedUsers.count == 1)
+        #expect(vm.blockedUsers.first?.username == "badactor")
+    }
+
+    @Test func blockUserAddsToList() async throws {
+        let mock = MockAuthService()
+        let me = makeProfile()
+        let target = makeProfile(username: "target")
+        mock.stubbedProfile = me
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = me
+        try await vm.blockUser(target)
+        #expect(vm.blockedUsers.contains(where: { $0.id == target.id }))
+        #expect(mock.blockUserCallCount == 1)
+    }
+
+    @Test func unblockUserRemovesFromList() async throws {
+        let mock = MockAuthService()
+        let me = makeProfile()
+        let target = makeProfile(username: "target")
+        mock.stubbedProfile = me
+        mock.stubbedBlockedUsers = [target]
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = me
+        vm.blockedUsers = [target]
+        try await vm.unblockUser(target)
+        #expect(vm.blockedUsers.isEmpty)
+        #expect(mock.unblockUserCallCount == 1)
+    }
+
+    @Test func fetchBlockedErrorSetsVMError() async {
+        let mock = MockAuthService()
+        mock.stubbedProfile = makeProfile()
+        mock.shouldThrowOnFetchBlocked = true
+        let vm = AuthViewModel(authService: mock)
+        vm.profile = mock.stubbedProfile
+        await vm.loadBlockedUsers()
+        #expect(vm.error != nil)
+    }
+}

@@ -8,6 +8,8 @@ final class AuthViewModel {
     var profile: Profile?
     var isLoading = false
     var error: Error?
+    var blockedUsers: [Profile] = []
+    var isLoadingBlocked = false
 
     private let authService: AuthServiceProtocol
 
@@ -84,6 +86,52 @@ final class AuthViewModel {
         try await authService.deleteAccount()
         currentUser = nil
         profile = nil
+    }
+
+    @MainActor
+    func updatePrivacySettings(visibility: ProfileVisibility, activitySharing: Bool) async {
+        guard let userID else { return }
+        isSaving = true
+        error = nil
+        do {
+            profile = try await authService.updatePrivacySettings(
+                userID: userID,
+                visibility: visibility,
+                activitySharing: activitySharing
+            )
+        } catch {
+            self.error = error
+        }
+        isSaving = false
+    }
+
+    @MainActor
+    func loadBlockedUsers() async {
+        guard let userID else { return }
+        isLoadingBlocked = true
+        error = nil
+        do {
+            blockedUsers = try await authService.fetchBlockedUsers(userID: userID)
+        } catch {
+            self.error = error
+        }
+        isLoadingBlocked = false
+    }
+
+    @MainActor
+    func blockUser(_ profileToBlock: Profile) async throws {
+        guard let userID else { return }
+        try await authService.blockUser(blockerID: userID, blockedID: profileToBlock.id)
+        if !blockedUsers.contains(where: { $0.id == profileToBlock.id }) {
+            blockedUsers.append(profileToBlock)
+        }
+    }
+
+    @MainActor
+    func unblockUser(_ profileToUnblock: Profile) async throws {
+        guard let userID else { return }
+        try await authService.unblockUser(blockerID: userID, blockedID: profileToUnblock.id)
+        blockedUsers.removeAll { $0.id == profileToUnblock.id }
     }
 
     @MainActor

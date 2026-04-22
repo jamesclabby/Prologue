@@ -11,4 +11,10 @@ protocol AuthServiceProtocol {
                        favoriteGenre: String?, avatarURL: String?) async throws -> Profile
     func uploadAvatar(userID: UUID, imageData: Data) async throws -> String
     func deleteAccount() async throws
+
+    func updatePrivacySettings(userID: UUID, visibility: ProfileVisibility,
+                               activitySharing: Bool) async throws -> Profile
+    func fetchBlockedUsers(userID: UUID) async throws -> [Profile]
+    func blockUser(blockerID: UUID, blockedID: UUID) async throws
+    func unblockUser(blockerID: UUID, blockedID: UUID) async throws
 }
