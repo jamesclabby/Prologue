@@ -69,6 +69,7 @@ final class TabBarTests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Search"].exists)
         XCTAssertTrue(app.tabBars.buttons["Friends"].exists)
         XCTAssertTrue(app.tabBars.buttons["Insights"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Profile"].exists)
     }
 
     func testLibraryTabIsSelectedByDefault() {
@@ -111,37 +112,38 @@ final class LibraryViewTests: XCTestCase {
         }
     }
 
-    func testProfileButtonExists() {
-        XCTAssertTrue(app.buttons["Profile"].waitForExistence(timeout: 3))
-    }
-
-    func testTappingProfileButtonOpensSheet() {
-        app.buttons["Profile"].tap()
-        XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 3))
-    }
 }
 
-// MARK: - ProfileSheet
+// MARK: - ProfileTab
 
-final class ProfileSheetTests: XCTestCase {
+final class ProfileTabTests: XCTestCase {
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = .makeAuthenticated()
-        XCTAssertTrue(app.navigationBars["My Library"].waitForExistence(timeout: 3))
-        app.buttons["Profile"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Profile"].waitForExistence(timeout: 3))
+        app.tabBars.buttons["Profile"].tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 3))
     }
     override func tearDownWithError() throws { app = nil }
 
+    func testNavigationTitle() {
+        XCTAssertTrue(app.navigationBars["Profile"].exists)
+    }
+
     func testSignOutButtonExists() {
+        app.swipeUp()
         XCTAssertTrue(app.buttons["Sign Out"].waitForExistence(timeout: 3))
     }
 
-    func testDoneButtonDismissesSheet() {
-        app.buttons["Done"].tap()
-        XCTAssertTrue(app.navigationBars["My Library"].waitForExistence(timeout: 3))
+    func testDeleteAccountButtonExists() {
+        app.swipeUp()
+        XCTAssertTrue(app.buttons["Delete Account"].waitForExistence(timeout: 3))
+    }
+
+    func testEditProfileLinkExists() {
+        XCTAssertTrue(app.buttons["Edit Profile"].waitForExistence(timeout: 3))
     }
 }
 

@@ -19,3 +19,8 @@ Prologue/Prologue.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 
 # macOS
 .DS_Store
+
+# Claude-docs
+*.SettingsAndProfile.md
+*.ProjectPlan.md
+*.CLAUDE.md

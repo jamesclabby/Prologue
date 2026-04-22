@@ -75,6 +75,35 @@ final class AuthService: AuthServiceProtocol {
             .value
     }
 
+    func updateProfile(userID: UUID, displayName: String?, username: String,
+                       favoriteGenre: String?, avatarURL: String?) async throws -> Profile {
+        let update = ProfileUpdate(displayName: displayName, username: username,
+                                   favoriteGenre: favoriteGenre, avatarURL: avatarURL)
+        return try await supabase
+            .from("profiles")
+            .update(update)
+            .eq("id", value: userID)
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
+    func uploadAvatar(userID: UUID, imageData: Data) async throws -> String {
+        let path = "\(userID.uuidString.lowercased()).jpg"
+        _ = try await supabase.storage
+            .from("avatars")
+            .upload(path, data: imageData,
+                    options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true))
+        let url = try supabase.storage.from("avatars").getPublicURL(path: path)
+        return url.absoluteString
+    }
+
+    func deleteAccount() async throws {
+        try await supabase.rpc("delete_user").execute()
+        try await signOut()
+    }
+
     // MARK: - Nonce helpers
 
     private func randomNonce(length: Int = 32) -> String {
@@ -107,4 +136,18 @@ enum AuthError: LocalizedError {
 private struct ProfileInsert: Encodable {
     let id: UUID
     let username: String
+}
+
+private struct ProfileUpdate: Encodable {
+    let displayName: String?
+    let username: String
+    let favoriteGenre: String?
+    let avatarURL: String?
+
+    enum CodingKeys: String, CodingKey {
+        case displayName  = "display_name"
+        case username
+        case favoriteGenre = "favorite_genre"
+        case avatarURL    = "avatar_url"
+    }
 }

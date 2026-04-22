@@ -56,7 +56,7 @@ struct VolumeInfo: Codable {
     let industryIdentifiers: [IndustryIdentifier]?
     let publishedDate: String?
     let publisher: String?
-    let categories: [String]?
+    var categories: [String]? = nil
 }
 
 struct ImageLinks: Codable {

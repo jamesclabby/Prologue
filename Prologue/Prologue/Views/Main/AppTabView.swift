@@ -27,6 +27,11 @@ struct AppTabView: View {
             InsightsView()
                 .tabItem { Label("Insights", systemImage: "chart.bar.fill") }
                 .environment(statsVM)
+
+            ProfileView()
+                .tabItem { Label("Profile", systemImage: "person.circle") }
+                .environment(socialVM)
+                .environment(libraryVM)
         }
         .task {
             // userID uses currentUser?.id as primary — it's set before AppTabView ever

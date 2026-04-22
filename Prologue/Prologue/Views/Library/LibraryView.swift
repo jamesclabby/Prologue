@@ -2,9 +2,7 @@ import SwiftUI
 
 struct LibraryView: View {
     @Environment(LibraryViewModel.self) private var libraryVM
-    @Environment(AuthViewModel.self) private var authVM
     @State private var selectedStatus: ReadingStatus = .inProgress
-    @State private var showProfile = false
 
     var body: some View {
         NavigationStack {
@@ -46,57 +44,10 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("My Library")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showProfile = true } label: {
-                        Image(systemName: "person.circle")
-                    }
-                    .accessibilityLabel("Profile")
-                }
-            }
-            .sheet(isPresented: $showProfile) {
-                ProfileSheet()
-                    .environment(authVM)
-            }
         }
     }
 }
 
-struct ProfileSheet: View {
-    @Environment(AuthViewModel.self) private var authVM
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    if let username = authVM.profile?.username {
-                        LabeledContent("Username", value: username)
-                    }
-                    if let genre = authVM.profile?.favoriteGenre {
-                        LabeledContent("Favorite Genre", value: genre)
-                    }
-                }
-
-                Section {
-                    Button(role: .destructive) {
-                        dismiss()
-                        Task { await authVM.signOut() }
-                    } label: {
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                }
-            }
-            .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
 
 struct BookCoverCell: View {
     let userBook: UserBook

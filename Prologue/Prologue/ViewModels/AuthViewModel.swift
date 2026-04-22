@@ -15,6 +15,8 @@ final class AuthViewModel {
         self.authService = authService
     }
 
+    var isSaving = false
+
     var isSignedIn: Bool { currentUser != nil }
     var userID: UUID? { currentUser?.id ?? profile?.id }
 
@@ -51,6 +53,37 @@ final class AuthViewModel {
         }
         currentUser = user
         await loadOrCreateProfile(for: user)
+    }
+
+    @MainActor
+    func updateProfile(displayName: String?, username: String,
+                       favoriteGenre: String?, avatarData: Data? = nil) async {
+        guard let userID else { return }
+        isSaving = true
+        error = nil
+        do {
+            var avatarURL = profile?.avatarURL
+            if let avatarData {
+                avatarURL = try await authService.uploadAvatar(userID: userID, imageData: avatarData)
+            }
+            profile = try await authService.updateProfile(
+                userID: userID,
+                displayName: displayName,
+                username: username,
+                favoriteGenre: favoriteGenre,
+                avatarURL: avatarURL
+            )
+        } catch {
+            self.error = error
+        }
+        isSaving = false
+    }
+
+    @MainActor
+    func deleteAccount() async throws {
+        try await authService.deleteAccount()
+        currentUser = nil
+        profile = nil
     }
 
     @MainActor

@@ -247,7 +247,8 @@ struct BookModelTests {
                     IndustryIdentifier(type: "ISBN_13", identifier: "9780261102217")
                 ],
                 publishedDate: "1937",
-                publisher: "George Allen & Unwin"
+                publisher: "George Allen & Unwin",
+                categories: nil
             )
         )
 
@@ -271,7 +272,8 @@ struct BookModelTests {
                     IndustryIdentifier(type: "ISBN_10", identifier: "0261102214"),
                     IndustryIdentifier(type: "ISBN_13", identifier: "9780261102217")
                 ],
-                publishedDate: nil, publisher: nil
+                publishedDate: nil, publisher: nil,
+                categories: nil
             )
         )
         #expect(Book(from: item).isbn == "9780261102217")

@@ -103,6 +103,7 @@ struct AddBookSheet: View {
                         }
                     }
                     .pickerStyle(.inline)
+                    .labelsHidden()
                 }
                 if let addError {
                     Section {
