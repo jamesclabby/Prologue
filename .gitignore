@@ -21,6 +21,6 @@ Prologue/Prologue.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 .DS_Store
 
 # Claude-docs
-SettingsAndProfile.md
-ProjectPlan.md
-CLAUDE.md
+/SettingsAndProfile.md
+/ProjectPlan.md
+/CLAUDE.md
