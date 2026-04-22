@@ -14,22 +14,30 @@ private func makeProfile(
 
 private func makeUserBook(
     userID: UUID = UUID(),
+    googleBooksID: String = "book-\(UUID().uuidString)",
     isPrivate: Bool = false,
-    status: ReadingStatus = .read
+    status: ReadingStatus = .read,
+    rating: Int? = nil
 ) -> UserBook {
     UserBook(
         id: UUID(),
         userID: userID,
-        googleBooksID: "book-\(UUID().uuidString)",
+        googleBooksID: googleBooksID,
         status: status,
         currentPage: 0,
         totalPages: 300,
         isPrivate: isPrivate,
-        rating: nil,
+        rating: rating,
         reviewText: nil,
         addedAt: Date(),
         updatedAt: Date()
     )
+}
+
+private func makeBook(id: String, title: String = "Test Book") -> Book {
+    Book(id: id, title: title, authors: ["Author"],
+         description: nil, pageCount: 200, coverURL: nil,
+         isbn: nil, publishedDate: nil, publisher: nil)
 }
 
 // MARK: - Search query guard
@@ -204,5 +212,125 @@ struct ProfileModelTests {
         let a = Profile(id: UUID(), username: "james", favoriteGenre: nil, avatarURL: nil, createdAt: now)
         let b = Profile(id: UUID(), username: "james", favoriteGenre: nil, avatarURL: nil, createdAt: now)
         #expect(a != b)
+    }
+}
+
+// MARK: - loadFriendReviews
+
+@MainActor
+@Suite("SocialViewModel — loadFriendReviews")
+struct FriendReviewsTests {
+
+    @Test func returnsEmptyWhenFriendsListIsEmpty() async {
+        let vm = SocialViewModel(bookSearchService: MockBookSearchService())
+        let reviews = await vm.loadFriendReviews(for: "any-book-id")
+        #expect(reviews.isEmpty)
+    }
+
+    @Test func friendReviewIDEqualsUserBookID() {
+        let profile = makeProfile()
+        let ub = makeUserBook(userID: profile.id, rating: 4)
+        let review = FriendReview(id: ub.id, profile: profile, userBook: ub)
+        #expect(review.id == ub.id)
+    }
+
+    @Test func friendReviewPreservesProfileAndUserBook() {
+        let profile = makeProfile(username: "alice")
+        let ub = makeUserBook(userID: profile.id, rating: 5)
+        let review = FriendReview(id: ub.id, profile: profile, userBook: ub)
+        #expect(review.profile.username == "alice")
+        #expect(review.userBook.rating == 5)
+    }
+}
+
+// MARK: - bookMetadata
+
+@MainActor
+@Suite("SocialViewModel — bookMetadata")
+struct BookMetadataTests {
+
+    @Test func bookMetadataReturnsCachedValueWithoutFetch() async {
+        let mock = MockBookSearchService()
+        mock.stubbedIDResult = makeBook(id: "cached-id", title: "Cached")
+        let vm = SocialViewModel(bookSearchService: mock)
+        vm.friendBookCache["cached-id"] = makeBook(id: "cached-id", title: "Already Here")
+        let result = await vm.bookMetadata(for: "cached-id")
+        #expect(result?.title == "Already Here")
+    }
+
+    @Test func bookMetadataFetchesAndCachesOnMiss() async {
+        let mock = MockBookSearchService()
+        mock.stubbedIDResult = makeBook(id: "new-id", title: "Fetched")
+        let vm = SocialViewModel(bookSearchService: mock)
+        let result = await vm.bookMetadata(for: "new-id")
+        #expect(result?.title == "Fetched")
+        #expect(vm.friendBookCache["new-id"]?.title == "Fetched")
+    }
+
+    @Test func bookMetadataReturnsNilOnFetchFailure() async {
+        let mock = MockBookSearchService()
+        mock.shouldThrow = true
+        let vm = SocialViewModel(bookSearchService: mock)
+        let result = await vm.bookMetadata(for: "bad-id")
+        #expect(result == nil)
+    }
+}
+
+// MARK: - friendBookCache metadata
+
+@MainActor
+@Suite("SocialViewModel — friendBookCache metadata")
+struct FriendBookMetadataCacheTests {
+
+    @Test func initialFriendBookCacheIsEmpty() {
+        let vm = SocialViewModel(bookSearchService: MockBookSearchService())
+        #expect(vm.friendBookCache.isEmpty)
+    }
+
+    @Test func cacheBookMetadataPopulatesCache() async {
+        let mock = MockBookSearchService()
+        mock.stubbedIDResult = makeBook(id: "gbooks-1", title: "Dune")
+        let vm = SocialViewModel(bookSearchService: mock)
+        let userBook = makeUserBook(googleBooksID: "gbooks-1")
+        await vm.cacheBookMetadata(for: [userBook])
+        #expect(vm.friendBookCache["gbooks-1"]?.title == "Dune")
+    }
+
+    @Test func cacheBookMetadataSkipsAlreadyCachedIDs() async {
+        let mock = MockBookSearchService()
+        let existing = makeBook(id: "gbooks-2", title: "Original")
+        mock.stubbedIDResult = makeBook(id: "gbooks-2", title: "Replacement")
+        let vm = SocialViewModel(bookSearchService: mock)
+        vm.friendBookCache["gbooks-2"] = existing
+        let userBook = makeUserBook(googleBooksID: "gbooks-2")
+        await vm.cacheBookMetadata(for: [userBook])
+        #expect(vm.friendBookCache["gbooks-2"]?.title == "Original")
+    }
+
+    @Test func cacheBookMetadataHandlesMultipleBooks() async {
+        let mock = MockBookSearchService()
+        mock.stubbedIDResult = makeBook(id: "any", title: "Some Book")
+        let vm = SocialViewModel(bookSearchService: mock)
+        let books = ["id-a", "id-b", "id-c"].map { makeUserBook(googleBooksID: $0) }
+        await vm.cacheBookMetadata(for: books)
+        #expect(vm.friendBookCache.count == 3)
+    }
+
+    @Test func cacheBookMetadataToleratesNilResult() async {
+        let mock = MockBookSearchService()
+        mock.stubbedIDResult = nil
+        let vm = SocialViewModel(bookSearchService: mock)
+        let userBook = makeUserBook(googleBooksID: "unknown-id")
+        await vm.cacheBookMetadata(for: [userBook])
+        #expect(vm.friendBookCache.isEmpty)
+    }
+
+    @Test func cacheBookMetadataToleratesServiceError() async {
+        let mock = MockBookSearchService()
+        mock.shouldThrow = true
+        let vm = SocialViewModel(bookSearchService: mock)
+        let userBook = makeUserBook(googleBooksID: "error-id")
+        await vm.cacheBookMetadata(for: [userBook])
+        #expect(vm.friendBookCache.isEmpty)
     }
 }

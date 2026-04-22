@@ -44,9 +44,11 @@ struct SocialView: View {
                     }
                 }
 
-                if !socialVM.searchResults.isEmpty {
+                let ownID = authVM.userID
+                let filteredResults = socialVM.searchResults.filter { ownID == nil || $0.id != ownID }
+                if !filteredResults.isEmpty {
                     Section("Search Results") {
-                        ForEach(socialVM.searchResults) { profile in
+                        ForEach(filteredResults) { profile in
                             HStack {
                                 Text(profile.username).font(.headline)
                                 Spacer()

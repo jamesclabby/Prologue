@@ -20,6 +20,7 @@ struct AppTabView: View {
 
             SocialView()
                 .tabItem { Label("Friends", systemImage: "person.2") }
+                .badge(socialVM.pendingRequests.count)
                 .environment(socialVM)
                 .environment(libraryVM)
 

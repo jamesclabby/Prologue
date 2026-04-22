@@ -10,6 +10,22 @@ struct Book: Codable, Identifiable, Equatable, Hashable {
     let isbn: String?
     let publishedDate: String?
     let publisher: String?
+    let genre: String?
+
+    init(id: String, title: String, authors: [String], description: String?,
+         pageCount: Int?, coverURL: URL?, isbn: String?,
+         publishedDate: String?, publisher: String?, genre: String? = nil) {
+        self.id = id
+        self.title = title
+        self.authors = authors
+        self.description = description
+        self.pageCount = pageCount
+        self.coverURL = coverURL
+        self.isbn = isbn
+        self.publishedDate = publishedDate
+        self.publisher = publisher
+        self.genre = genre
+    }
 
     var estimatedWordCount: Int {
         (pageCount ?? 0) * 275
@@ -40,6 +56,7 @@ struct VolumeInfo: Codable {
     let industryIdentifiers: [IndustryIdentifier]?
     let publishedDate: String?
     let publisher: String?
+    let categories: [String]?
 }
 
 struct ImageLinks: Codable {
@@ -71,7 +88,8 @@ extension Book {
             coverURL: coverURL,
             isbn: isbn,
             publishedDate: info.publishedDate,
-            publisher: info.publisher
+            publisher: info.publisher,
+            genre: info.categories?.first
         )
     }
 }

@@ -8,10 +8,16 @@ final class SocialViewModel {
     var pendingRequests: [Profile] = []
     var searchResults: [Profile] = []
     var friendBooks: [String: [UserBook]] = [:]
+    var friendBookCache: [String: Book] = [:]
     var isLoading = false
     var error: Error?
 
     private let supabase = SupabaseManager.shared.client
+    private let bookSearchService: BookSearchServiceProtocol
+
+    init(bookSearchService: BookSearchServiceProtocol = BookSearchService()) {
+        self.bookSearchService = bookSearchService
+    }
 
     @MainActor
     func loadFriends(userID: UUID) async {
@@ -118,6 +124,56 @@ final class SocialViewModel {
             .execute()
             .value
         friendBooks[friendID.uuidString] = books
+        await cacheBookMetadata(for: books)
         return books
     }
+
+    @MainActor
+    func cacheBookMetadata(for userBooks: [UserBook]) async {
+        for userBook in userBooks where friendBookCache[userBook.googleBooksID] == nil {
+            if let metadata = try? await bookSearchService.fetchByID(userBook.googleBooksID) {
+                friendBookCache[userBook.googleBooksID] = metadata
+            }
+        }
+    }
+
+    @MainActor
+    func bookMetadata(for googleBooksID: String) async -> Book? {
+        if let cached = friendBookCache[googleBooksID] { return cached }
+        if let fetched = try? await bookSearchService.fetchByID(googleBooksID) {
+            friendBookCache[googleBooksID] = fetched
+            return fetched
+        }
+        return nil
+    }
+
+    @MainActor
+    func loadFriendReviews(for googleBooksID: String) async -> [FriendReview] {
+        let friendIDs = friends.map(\.id)
+        guard !friendIDs.isEmpty else { return [] }
+        do {
+            let userBooks: [UserBook] = try await supabase
+                .from("user_books")
+                .select()
+                .eq("google_books_id", value: googleBooksID)
+                .in("user_id", values: friendIDs.map(\.uuidString))
+                .eq("is_private", value: false)
+                .execute()
+                .value
+            return userBooks
+                .filter { $0.rating != nil || $0.reviewText != nil }
+                .compactMap { ub in
+                    guard let profile = friends.first(where: { $0.id == ub.userID }) else { return nil }
+                    return FriendReview(id: ub.id, profile: profile, userBook: ub)
+                }
+        } catch {
+            return []
+        }
+    }
+}
+
+struct FriendReview: Identifiable {
+    let id: UUID
+    let profile: Profile
+    let userBook: UserBook
 }

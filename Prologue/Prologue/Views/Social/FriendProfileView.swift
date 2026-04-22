@@ -2,7 +2,6 @@ import SwiftUI
 
 struct FriendProfileView: View {
     @Environment(SocialViewModel.self) private var socialVM
-    @Environment(LibraryViewModel.self) private var libraryVM
     let profile: Profile
     @State private var friendBooks: [UserBook] = []
     @State private var isLoading = true
@@ -58,22 +57,37 @@ struct FriendProfileView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(books) { userBook in
-                        let book = libraryVM.bookCache[userBook.googleBooksID]
-                        VStack(alignment: .leading, spacing: 4) {
-                            AsyncImage(url: book?.coverURL) { image in
-                                image.resizable().aspectRatio(2/3, contentMode: .fill)
-                            } placeholder: {
-                                RoundedRectangle(cornerRadius: 8).fill(.quaternary).aspectRatio(2/3, contentMode: .fit)
-                            }
-                            .frame(width: 80)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .shadow(radius: 2)
+                        let book = socialVM.friendBookCache[userBook.googleBooksID]
+                        NavigationLink {
+                            SocialBookDetailView(googleBooksID: userBook.googleBooksID)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                AsyncImage(url: book?.coverURL) { image in
+                                    image.resizable().aspectRatio(2/3, contentMode: .fill)
+                                } placeholder: {
+                                    RoundedRectangle(cornerRadius: 8).fill(.quaternary).aspectRatio(2/3, contentMode: .fit)
+                                }
+                                .frame(width: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .shadow(radius: 2)
 
-                            Text(book?.title ?? "…")
-                                .font(.caption.bold())
-                                .lineLimit(2)
-                                .frame(width: 80, alignment: .leading)
+                                Text(book?.title ?? "…")
+                                    .font(.caption.bold())
+                                    .lineLimit(2)
+                                    .frame(width: 80, alignment: .leading)
+
+                                if let rating = userBook.rating {
+                                    HStack(spacing: 1) {
+                                        ForEach(1...5, id: \.self) { star in
+                                            Image(systemName: star <= rating ? "star.fill" : "star")
+                                                .font(.system(size: 8))
+                                                .foregroundStyle(.yellow)
+                                        }
+                                    }
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
