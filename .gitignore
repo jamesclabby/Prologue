@@ -25,3 +25,7 @@ Prologue/Prologue.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 /ProjectPlan.md
 /ToDos.md
 /CLAUDE.md
+/ProjectAudit.md
+
+# Claude Code local settings (personal hooks, not team-shared)
+/.claude/settings.local.json
